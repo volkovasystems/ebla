@@ -85,8 +85,55 @@ var testModules = function testModules( callback ){
 		+ "&& git pull "
 		+ "&& git add --all "
 		+ "&& git commit -m 'Update modified sub modules' "
-		+ "&& git "
+		+ "&& git push";
 
+	var outerNodeModuleCommand = "cd ./node_modules "
+		+ "&& git checkout master "
+		+ "&& git pull "
+		+ "&& git add --all "
+		+ "&& git commit -m 'Update modified sub modules' "
+		+ "&& git push";
+
+	async.series( [
+			function( callback ){
+				var task = childprocess.exec( innerNodeModuleCommand );
+				var error = "";
+				task.stderr.on( "data",
+					function( data ){
+						error += data.toString( );
+					} );
+				task.on( "close",
+					function( ){
+						if( error ){
+							error = new Error( error );
+							callback( error );
+						}else{
+							callback( null, true );
+						}
+					} );
+			},
+
+			function( callback ){
+				var task = childprocess.exec( outerNodeModuleCommand );
+				var error = "";
+				task.stderr.on( "data",
+					function( data ){
+						error += data.toString( );
+					} );
+				task.on( "close",
+					function( ){
+						if( error ){
+							error = new Error( error );
+							callback( error );
+						}else{
+							callback( null, true );
+						}
+					} );
+			}
+		],
+		function( error, callback ){
+
+		} );
 };
 
 var checkModules = function checkModules( callback ){
@@ -109,19 +156,11 @@ var checkModules = function checkModules( callback ){
 };
 
 var updateDependencies = function updateDependencies( callback ){
-	var task = childprocess.exec( "cd library-node && npm update" );
-	task.on( "close",
-		function( ){
-
-		} );
+	chore( "cd library-node && npm update", callback );
 };
 
 var completeDependencies = function completeDependencies( callback ){
-	var task = childprocess.exec( "cd library-node && npm install" );
-	task.on( "close",
-		function( ){
-
-		} );
+	chore( "cd library-node && npm install", callback );
 };
 
 var addModule = function addModule( moduleName ){
