@@ -72,6 +72,23 @@ var interpolateExistingModules = function interpolateExistingModules( moduleList
 	callback( null, true );
 };
 
+var testModules = function testModules( callback ){
+	/*
+		Since ebla is also using the repository maintained by library sub module,
+			we just need to push first any changes inside it and pull the node modules used
+			by ebla.
+	*/
+
+	//Add, commit and push any changes
+	var innerNodeModuleCommand = "cd ./library-node/node_modules "
+		+ "&& git checkout master "
+		+ "&& git pull "
+		+ "&& git add --all "
+		+ "&& git commit -m 'Update modified sub modules' "
+		+ "&& git "
+
+};
+
 var checkModules = function checkModules( callback ){
 	async.waterfall( [
 			readPackageConfiguration,
@@ -84,18 +101,22 @@ var checkModules = function checkModules( callback ){
 				return;
 			}
 			if( isComplete ){
-				updateDependencies( );
+				updateDependencies( callback );
 			}else{
-				completeDependencies( );
+				completeDependencies( callback );
 			}
 		} );
 };
 
-var updateDependencies = function updateDependencies( ){
+var updateDependencies = function updateDependencies( callback ){
+	var task = childprocess.exec( "cd library-node && npm update" );
+	task.on( "close",
+		function( ){
 
+		} );
 };
 
-var completeDependencies = function completeDependencies( ){
+var completeDependencies = function completeDependencies( callback ){
 	var task = childprocess.exec( "cd library-node && npm install" );
 	task.on( "close",
 		function( ){
@@ -109,8 +130,10 @@ var addModule = function addModule( moduleName ){
 
 var boot = function boot( ){
 	async.waterfall( [
+			checkModules
 		],
 		function( error, result ){
 
 		} );
 };
+exports.boot = boot;
