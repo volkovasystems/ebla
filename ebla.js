@@ -4,6 +4,11 @@ var async = require( "async" );
 var _ = require( "underscore" );
 var optimist = require( "optimist" );
 
+var extractDependencyList = function extractDependencyList( configuration, callback ){
+	var dependencyList = JSON.parse( configuration ).dependencies;
+	callback( null, dependencyList );
+};
+
 var readPackageConfiguration = function readPackageConfiguration( callback ){
 	var packageConfigurationPath = "./library-node/package.json";
 	fs.readFile( packageConfigurationPath,
@@ -13,8 +18,7 @@ var readPackageConfiguration = function readPackageConfiguration( callback ){
 				callback( error );
 				return;
 			}
-			var dependencyList = JSON.parse( configuration ).dependencies;
-			callback( null, dependencyList );
+			callback( null, configuration );		
 		} );
 };
 
@@ -79,7 +83,14 @@ var testModules = function testModules( callback ){
 			by ebla.
 	*/
 
-	//Add, commit and push any changes
+	/*
+		Pull, add, commit and push any changes
+		This will start in the innner node modules
+			changes will propagate outside so we have to update them.
+		This is tempting to optimize but we should leave it like this.
+		The command string might evolve overtime so this is a better solution
+			than optimizing things.
+	*/
 	var innerNodeModuleCommand = "cd ./library-node/node_modules "
 		+ "&& git checkout master "
 		+ "&& git pull "
@@ -96,55 +107,37 @@ var testModules = function testModules( callback ){
 
 	async.series( [
 			function( callback ){
-				var task = childprocess.exec( innerNodeModuleCommand );
-				var error = "";
-				task.stderr.on( "data",
-					function( data ){
-						error += data.toString( );
-					} );
-				task.on( "close",
-					function( ){
-						if( error ){
-							error = new Error( error );
-							callback( error );
-						}else{
-							callback( null, true );
-						}
-					} );
+				chore( innerNodeModuleCommand, callback );
 			},
 
 			function( callback ){
-				var task = childprocess.exec( outerNodeModuleCommand );
-				var error = "";
-				task.stderr.on( "data",
-					function( data ){
-						error += data.toString( );
-					} );
-				task.on( "close",
-					function( ){
-						if( error ){
-							error = new Error( error );
-							callback( error );
-						}else{
-							callback( null, true );
-						}
-					} );
+				chore( outerNodeModuleCommand, callback );
 			}
 		],
-		function( error, callback ){
-
+		function( error, results ){
+			if( error ){
+				console.log( error );
+				callback( error );
+				return;
+			}
+			/*
+				TODO: Check for validity of the modules by requiring them
+					in a local scoped environment.
+			*/
 		} );
 };
 
 var checkModules = function checkModules( callback ){
 	async.waterfall( [
 			readPackageConfiguration,
+			extractDependencyList,
 			readNodeModulesDirectory,
 			interpolateExistingModules
 		],
 		function( error, isComplete ){
 			if( error ){
 				console.log( error );
+				callback( error );
 				return;
 			}
 			if( isComplete ){
@@ -163,8 +156,39 @@ var completeDependencies = function completeDependencies( callback ){
 	chore( "cd library-node && npm install", callback );
 };
 
-var addModule = function addModule( moduleName ){
+var addModule = function addModule( moduleName, callback ){
+	async.waterfall( [
+		],
+		function( ){
 
+		} );
+	readPackageConfiguration( function( error, configuration ){
+		if( error ){
+			console.log( error );
+			callback( error );
+			return;
+		}
+		configuration = JSON.parse( configuration );
+		var dependencyList = configuration.dependencies;
+		if( !( moduleName in dependencyList ) ){
+			dependencyList[ moduleName ] = "x.x.x";
+			configuration = JSON.stringify( configuration );
+			var packageConfigurationPath = "./library-node/package.json";
+			fs.writeFile( packageConfigurationPath,
+				configuration,
+				{ "encoding": "utf8" },
+				function( error, configuration ){
+					if( error ){
+						console.log( error );
+						callback( error );
+						return;
+					}
+					completeDependencies( callback );
+				} );
+		}else{
+			updateDependencies( callback );
+		}
+	} );
 };
 
 var boot = function boot( ){
