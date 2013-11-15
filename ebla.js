@@ -123,6 +123,7 @@ var testModules = function testModules( callback ){
 			/*
 				TODO: Check for validity of the modules by requiring them
 					in a local scoped environment.
+				If the require is successfull then the module is safe to use.
 			*/
 		} );
 };
@@ -148,6 +149,14 @@ var checkModules = function checkModules( callback ){
 		} );
 };
 
+var checkDependencies = function checkDependencies( callback ){
+	async.waterfall( [
+		],
+		function( ){
+
+		} )
+};
+
 var updateDependencies = function updateDependencies( callback ){
 	chore( "cd library-node && npm update", callback );
 };
@@ -157,37 +166,64 @@ var completeDependencies = function completeDependencies( callback ){
 };
 
 var addModule = function addModule( moduleName, callback ){
+	var dependencyList = null;
 	async.waterfall( [
-		],
-		function( ){
+			readPackageConfiguration,
 
-		} );
-	readPackageConfiguration( function( error, configuration ){
-		if( error ){
-			console.log( error );
-			callback( error );
-			return;
-		}
-		configuration = JSON.parse( configuration );
-		var dependencyList = configuration.dependencies;
-		if( !( moduleName in dependencyList ) ){
-			dependencyList[ moduleName ] = "x.x.x";
-			configuration = JSON.stringify( configuration );
-			var packageConfigurationPath = "./library-node/package.json";
-			fs.writeFile( packageConfigurationPath,
-				configuration,
-				{ "encoding": "utf8" },
-				function( error, configuration ){
-					if( error ){
-						console.log( error );
-						callback( error );
-						return;
-					}
+			//Insert the dependency with x.x.x version.
+			//NOTE: This is strictly implemented. We should always supported updated versions.
+			function( configuration, callback ){
+				configuration = JSON.parse( configuration );
+				dependencyList = configuration.dependencies;
+				if( !( moduleName in dependencyList ) ){
+					dependencyList[ moduleName ] = "x.x.x";
+					configuration = JSON.stringify( configuration );
+					callback( error, configuration );
+				}else{
+					callback( null, configuration );
+				}		
+			},
+
+			//Test if needs installment or update.
+			//If installment, write the configuration to the package configuration first.
+			function( configuration, callback ){
+				if( !( moduleName in dependencyList ) ){
+					var packageConfigurationPath = "./library-node/package.json";
+					fs.writeFile( packageConfigurationPath,
+						configuration,
+						{ "encoding": "utf8" },
+						function( error ){
+							if( error ){
+								console.log( error );
+							}
+							callback( error, {
+								"needsInstallment": true
+							} );
+						} );
+				}else{
+					//TODO: Check here if needed update
+					callback( null, {
+						"needsUpdate": false
+					} );
+				}
+			},
+
+			function( task, callback ){
+				if( task.needsInstallment ){
 					completeDependencies( callback );
-				} );
-		}else{
-			updateDependencies( callback );
-		}
+				}else if( task.needsUpdate ){
+					updateDependencies( callback );
+				}else{
+					callback( null, true )
+				}
+			}
+		],
+		function( error, state ){
+			if( error ){
+				console.log( error );
+			}
+			callback( error, state );
+		} );
 	} );
 };
 
