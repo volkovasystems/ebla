@@ -4,13 +4,18 @@ var async = require( "async" );
 var _ = require( "underscore" );
 var optimist = require( "optimist" );
 
+
 var extractDependencyList = function extractDependencyList( configuration, callback ){
-	var dependencyList = JSON.parse( configuration ).dependencies;
+	var dependencyList = configuration.dependencies;
 	callback( null, dependencyList );
 };
 
 var readPackageConfiguration = function readPackageConfiguration( callback ){
 	var packageConfigurationPath = "./library-node/package.json";
+	if( !fs.existsSync( packageConfigurationPath ) ){
+		callback( new Error( "package configuration not found" ) );
+		return;
+	}
 	fs.readFile( packageConfigurationPath,
 		function( error, configuration ){
 			if( error ){
@@ -18,12 +23,17 @@ var readPackageConfiguration = function readPackageConfiguration( callback ){
 				callback( error );
 				return;
 			}
+			configuration = JSON.parse( configuration );
 			callback( null, configuration );		
-		} );
+		} );	
 };
 
 var readNodeModulesDirectory = function readNodeModulesDirectory( dependencyList, callback ){
 	var nodeModuleDirectory = "./library-node/node_modules";
+	if( !fs.existsSync( nodeModuleDirectory ) ){
+		callback( new Error( "node module directory not found" ) );
+		return;
+	}
 	fs.readdir( nodeModuleDirectory,
 		function( error, fileList ){
 			if( error ){
@@ -107,11 +117,11 @@ var testModules = function testModules( callback ){
 
 	async.series( [
 			function( callback ){
-				chore( innerNodeModuleCommand, callback );
+				chores( innerNodeModuleCommand, callback );
 			},
 
 			function( callback ){
-				chore( outerNodeModuleCommand, callback );
+				chores( outerNodeModuleCommand, callback );
 			}
 		],
 		function( error, results ){
@@ -149,8 +159,25 @@ var checkModules = function checkModules( callback ){
 		} );
 };
 
+/*
+	This will check if dependencies needs update.
+*/
 var checkDependencies = function checkDependencies( callback ){
 	async.waterfall( [
+			readPackageConfiguration,
+
+			function( configuration, callback ){
+				var dependencyList = configuration.dependencies;
+				dependencyList = _.keys( dependencyList );
+				var command = "npm outdated ";
+				async.map( dependencyList,
+					function( dependency, callback ){
+						
+					},
+					function( ){
+
+					} );
+			}
 		],
 		function( ){
 
@@ -173,7 +200,6 @@ var addModule = function addModule( moduleName, callback ){
 			//Insert the dependency with x.x.x version.
 			//NOTE: This is strictly implemented. We should always supported updated versions.
 			function( configuration, callback ){
-				configuration = JSON.parse( configuration );
 				dependencyList = configuration.dependencies;
 				if( !( moduleName in dependencyList ) ){
 					dependencyList[ moduleName ] = "x.x.x";
