@@ -14,66 +14,69 @@ var readPackageConfiguration = function readPackageConfiguration( callback ){
 	var packageConfigurationPath = "./library-node/package.json";
 	if( !fs.existsSync( packageConfigurationPath ) ){
 		callback( new Error( "package configuration not found" ) );
-		return;
-	}
-	fs.readFile( packageConfigurationPath,
-		function( error, configuration ){
-			if( error ){
-				console.log( error );
-				callback( error );
-				return;
-			}
-			configuration = JSON.parse( configuration );
-			callback( null, configuration );		
-		} );	
+	}else{
+		fs.readFile( packageConfigurationPath,
+			function( error, configuration ){
+				if( error ){
+					console.log( error );
+					callback( error );
+				}else{
+					configuration = JSON.parse( configuration );
+					callback( null, configuration );			
+				}
+			} );	
+	}	
 };
 
 var readNodeModulesDirectory = function readNodeModulesDirectory( dependencyList, callback ){
 	var nodeModuleDirectory = "./library-node/node_modules";
 	if( !fs.existsSync( nodeModuleDirectory ) ){
 		callback( new Error( "node module directory not found" ) );
-		return;
-	}
-	fs.readdir( nodeModuleDirectory,
-		function( error, fileList ){
-			if( error ){
-				console.log( error );
-				callback( error );
-				return;
-			}
-			async.map( fileList,
-				function( fileName, callback ){
-					var filePath = nodeModuleDirectory + fileName;
-					fs.stat( filePath,
-						function( error, fileStatistic ){
-							if( error ){
-								console.log( error );
-							}
-							if( fileStatistic 
-								&& fileStatistic.isDirectory( ) )
-							{
-								callback( null, {
-									"path": filePath,
-									"name": fileName
+	}else{
+		fs.readdir( nodeModuleDirectory,
+			function( error, fileList ){
+				if( error ){
+					console.log( error );
+					callback( error );
+					return;
+				}
+				async.map( fileList,
+					function( fileName, callback ){
+						var filePath = nodeModuleDirectory + fileName;
+						fs.stat( filePath,
+							function( error, fileStatistic ){
+								if( error ){
+									console.log( error );
+									callback( error );
+								}else if( fileStatistic 
+									&& fileStatistic.isDirectory( ) )
+								{
+									callback( null, {
+										"path": filePath,
+										"name": fileName
+									} );
+								}else{
+									callback( null, null );
+								}
+							} );
+					},
+					function( error, directoryList ){
+						if( error ){
+							console.log( error );
+							callback( error );
+						}else{
+							directoryList = _.compact( directoryList );
+							var moduleList = { };
+							_.chain( directoryList )
+								.compact( )
+								.each( function( directoryData ){
+									moduleList[ directoryData.name ] = directoryData.path
 								} );
-							}else{
-								callback( error );
-							}
-						} );
-				},
-				function( error, directoryList ){
-					if( error ){
-						console.log( error );
-					}
-					var moduleList = { };
-					_.chain( directoryList )
-						.compact( )
-						.each( function( directoryData ){
-							moduleList[ directoryData.name ] = directoryData.path
-						} );
-					callback( error, moduleList, dependencyList );
-				} );
-		} );
+							callback( null, moduleList, dependencyList );	
+						}
+					} );
+			} );	
+	}
 };
 
 var interpolateExistingModules = function interpolateExistingModules( moduleList, dependencyList, callback ){
@@ -128,13 +131,14 @@ var testModules = function testModules( callback ){
 			if( error ){
 				console.log( error );
 				callback( error );
-				return;
+			}else{
+				/*
+					TODO: Check for validity of the modules by requiring them
+						in a local scoped environment.
+					If the require is successfull then the module is safe to use.
+				*/	
 			}
-			/*
-				TODO: Check for validity of the modules by requiring them
-					in a local scoped environment.
-				If the require is successfull then the module is safe to use.
-			*/
+			
 		} );
 };
 
@@ -149,12 +153,12 @@ var checkModules = function checkModules( callback ){
 			if( error ){
 				console.log( error );
 				callback( error );
-				return;
-			}
-			if( isComplete ){
-				updateDependencies( callback );
 			}else{
-				completeDependencies( callback );
+				if( isComplete ){
+					updateDependencies( callback );
+				}else{
+					completeDependencies( callback );
+				}	
 			}
 		} );
 };
@@ -174,17 +178,34 @@ var checkDependencies = function checkDependencies( callback ){
 					function( dependency, callback ){
 						work( command + dependency,
 							function( error, state, output ){
-								callback( error, output );
+								if( error ){
+									console.log( error );
+									callback( error );
+								}else{
+									callback( null, output );	
+								}
 							} );
 					},
 					function( error, outputList ){
-						
+						if( error ){
+							console.log( error );
+							callback( error );
+						}else{
+							var needsUpdate = !_.isEmpty( outputList );
+							callback( null, needsUpdate );	
+						}
 					} );
 			}
 		],
-		function( ){
-
-		} )
+		function( error, needsUpdate ){
+			//I'm doing this for readability's sake.
+			if( error ){
+				console.log( error );
+				callback( error );
+			}else{
+				callback( null, needsUpdate );	
+			}
+		} );
 };
 
 var updateDependencies = function updateDependencies( callback ){
@@ -224,15 +245,19 @@ var addModule = function addModule( moduleName, callback ){
 						function( error ){
 							if( error ){
 								console.log( error );
+								callback( error );
+							}else{
+								callback( null, {
+									"needsInstallment": true
+								} );	
 							}
-							callback( error, {
-								"needsInstallment": true
-							} );
 						} );
 				}else{
-					//TODO: Check here if needed update
-					callback( null, {
-						"needsUpdate": false
+					//Check here if needed update
+					checkDependencies( function( error, needsUpdate ){
+						callback( error, {
+							"needsUpdate": needsUpdate
+						} );
 					} );
 				}
 			},
@@ -250,8 +275,10 @@ var addModule = function addModule( moduleName, callback ){
 		function( error, state ){
 			if( error ){
 				console.log( error );
+				callback( error );
+			}else{
+				callback( null, state );	
 			}
-			callback( error, state );
 		} );
 	} );
 };
