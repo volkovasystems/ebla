@@ -172,10 +172,13 @@ var checkDependencies = function checkDependencies( callback ){
 				var command = "npm outdated ";
 				async.map( dependencyList,
 					function( dependency, callback ){
-						
+						work( command + dependency,
+							function( error, state, output ){
+								callback( error, output );
+							} );
 					},
-					function( ){
-
+					function( error, outputList ){
+						
 					} );
 			}
 		],
