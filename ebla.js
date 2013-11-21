@@ -4,12 +4,6 @@ var async = require( "async" );
 var _ = require( "underscore" );
 var optimist = require( "optimist" );
 
-
-var extractDependencyList = function extractDependencyList( configuration, callback ){
-	var dependencyList = configuration.dependencies;
-	callback( null, dependencyList );
-};
-
 var readPackageConfiguration = function readPackageConfiguration( callback ){
 	var packageConfigurationPath = "./library-node/package.json";
 	if( !fs.existsSync( packageConfigurationPath ) ){
@@ -26,6 +20,11 @@ var readPackageConfiguration = function readPackageConfiguration( callback ){
 				}
 			} );	
 	}	
+};
+
+var extractDependencyList = function extractDependencyList( configuration, callback ){
+	var dependencyList = configuration.dependencies;
+	callback( null, dependencyList );
 };
 
 var readNodeModulesDirectory = function readNodeModulesDirectory( dependencyList, callback ){
@@ -262,6 +261,7 @@ var addModule = function addModule( moduleName, callback ){
 				}
 			},
 
+			//Execute if update or completion.
 			function( task, callback ){
 				if( task.needsInstallment ){
 					completeDependencies( callback );
