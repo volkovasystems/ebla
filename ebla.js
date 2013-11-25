@@ -3,6 +3,7 @@ var childprocess = require( "child_process" );
 var async = require( "async" );
 var _ = require( "underscore" );
 var optimist = require( "optimist" );
+var vm = require( "vm" );
 
 var readPackageConfiguration = function readPackageConfiguration( callback ){
 	var packageConfigurationPath = "./library-node/package.json";
@@ -78,6 +79,10 @@ var readNodeModulesDirectory = function readNodeModulesDirectory( dependencyList
 	}
 };
 
+var readNodeModules = function readNodeModules( callback ){
+	readNodeModulesDirectory( null, callback );
+};
+
 var interpolateExistingModules = function interpolateExistingModules( moduleList, dependencyList, callback ){
 	for( var dependency in dependencyList ){
 		if( !( dependency in moduleList ) ){
@@ -135,7 +140,29 @@ var testModules = function testModules( callback ){
 					TODO: Check for validity of the modules by requiring them
 						in a local scoped environment.
 					If the require is successfull then the module is safe to use.
-				*/	
+				*/
+
+				async.waterfall( [
+						readNodeModules,
+						
+						//Create an engine for requiring these modules.
+						function( moduleList, callback ){
+							async.each( _.keys( moduleList ),
+								function( module, callback ){
+									try{
+
+									}
+								},
+								function( ){
+
+								} );
+						}
+					] );
+
+				try{
+
+				}
+
 			}
 			
 		} );
