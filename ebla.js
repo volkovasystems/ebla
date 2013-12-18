@@ -218,8 +218,8 @@ var checkDependencies = function checkDependencies( callback ){
 							callback( error );
 						}else{
 							var needsUpdate = !_.isEmpty( outputList );
-							callback( null, needsUpdate );	
-						}
+							callback( null, needsUpdate );
+							}
 					} );
 			}
 		],
