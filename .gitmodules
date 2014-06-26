@@ -1,6 +1,1 @@
-[submodule "library-node"]
-	path = library-node
-	url = https://github.com/volkovasystems/library-node.git
-[submodule "node_modules"]
-	path = node_modules
-	url = https://github.com/volkovasystems/node_modules.git
+
